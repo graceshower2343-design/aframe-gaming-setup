@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gold Hunt 3D</title>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      padding: 12px 16px;
+      border-radius: 10px;
+      color: white;
+      background: #111b;
+      font-size: 18px;
+    }
+    #help {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    Gold: <span id="score">0</span> / 5
+    <div id="help">Move: W A S D · Look: mouse · Collect: click gold orbs</div>
+  </div>
+
+  <a-scene background="color: #87ceeb">
+    <a-assets>
+      <a-mixin id="gold-orb"
+        geometry="primitive: sphere; radius: 0.35"
+        material="color: #ffd700; metalness: 0.65; roughness: 0.25"
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 2500">
+      </a-mixin>
+    </a-assets>
+
+    <!-- Ground and arena -->
+    <a-plane rotation="-90 0 0" width="30" height="30"
+             color="#4caf50" shadow></a-plane>
+    <a-box position="0 1 -15" width="30" height="2" depth="0.5"
+           color="#39734a"></a-box>
+    <a-box position="0 1 15" width="30" height="2" depth="0.5"
+           color="#39734a"></a-box>
+    <a-box position="-15 1 0" width="0.5" height="2" depth="30"
+           color="#39734a"></a-box>
+    <a-box position="15 1 0" width="0.5" height="2" depth="30"
+           color="#39734a"></a-box>
+
+    <!-- Decorative trees -->
+    <a-cylinder position="-5 1 -5" radius="0.25" height="2" color="#704214"></a-cylinder>
+    <a-cone position="-5 2.5 -5" radius-bottom="1.2" height="2" color="#176b36"></a-cone>
+    <a-cylinder position="5 1 -8" radius="0.25" height="2" color="#704214"></a-cylinder>
+    <a-cone position="5 2.5 -8" radius-bottom="1.2" height="2" color="#176b36"></a-cone>
+    <a-cylinder position="7 1 4" radius="0.25" height="2" color="#704214"></a-cylinder>
+    <a-cone position="7 2.5 4" radius-bottom="1.2" height="2" color="#176b36"></a-cone>
+
+    <!-- Collectible gold orbs -->
+    <a-sphere class="collectible" position="-7 1 -6" mixin="gold-orb" clickable></a-sphere>
+    <a-sphere class="collectible" position="6 1 -3" mixin="gold-orb" clickable></a-sphere>
+    <a-sphere class="collectible" position="-3 1 5" mixin="gold-orb" clickable></a-sphere>
+    <a-sphere class="collectible" position="9 1 8" mixin="gold-orb" clickable></a-sphere>
+    <a-sphere class="collectible" position="2 1 -11" mixin="gold-orb" clickable></a-sphere>
+
+    <!-- Player and camera -->
+    <a-entity id="player">
+      <a-camera position="0 1.6 0" wasd-controls look-controls>
+        <a-cursor color="white"
+                  raycaster="objects: .collectible"
+                  fuse="false"></a-cursor>
+      </a-camera>
+    </a-entity>
+
+    <!-- Lighting -->
+    <a-light type="ambient" color="#fff" intensity="0.8"></a-light>
+    <a-light type="directional" position="-3 8 5" intensity="1.2"
+             cast-shadow="true"></a-light>
+  </a-scene>
+
+  <script>
+    let score = 0;
+    const scoreDisplay = document.querySelector("#score");
+
+    document.querySelectorAll(".collectible").forEach((orb) => {
+      orb.addEventListener("click", () => {
+        if (!orb.classList.contains("collected")) {
+          orb.classList.add("collected");
+          orb.setAttribute("visible", "false");
+          score += 1;
+          scoreDisplay.textContent = score;
+
+          if (score === 5) {
+            setTimeout(() => alert("You found all the gold! You win!"), 100);
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
