@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON BREACH</title>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+    :root { --cyan:#4dfcff; --pink:#ff3eaa; --gold:#ffd166; }
+    * { box-sizing:border-box; }
+    body { margin:0; overflow:hidden; background:#050712; color:white; font-family:"Rajdhani",sans-serif; }
+    a-scene { position:fixed; inset:0; z-index:0; }
+
+    #hud { display:none; position:fixed; inset:0; z-index:5; pointer-events:none; }
+    .panel {
+      background:linear-gradient(135deg,rgba(12,19,39,.9),rgba(7,10,23,.75));
+      border:1px solid rgba(77,252,255,.32);
+      box-shadow:0 0 25px rgba(77,252,255,.1),inset 0 0 20px rgba(77,252,255,.035);
+      backdrop-filter:blur(8px);
+      clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+    }
+    #topbar {
+      position:absolute; top:20px; left:50%; transform:translateX(-50%);
+      display:flex; gap:28px; padding:11px 24px; white-space:nowrap;
+      color:#b9ccdf; font:11px Orbitron,sans-serif; letter-spacing:2px; text-transform:uppercase;
+    }
+    #topbar strong { color:var(--cyan); font-size:16px; }
+    #topbar .wave strong { color:var(--gold); }
+    #topbar .kills strong { color:var(--pink); }
+    #leftHud { position:absolute; left:24px; bottom:25px; width:245px; padding:17px 19px; }
+    .label { color:#8da3be; font:10px Orbitron,sans-serif; letter-spacing:2px; text-transform:uppercase; }
+    #healthText { float:right; color:white; font:700 17px Orbitron,sans-serif; }
+    .bar { height:9px; margin-top:9px; background:#172239; overflow:hidden; }
+    #healthFill { width:100%; height:100%; background:linear-gradient(90deg,#ff416c,#ff7b70); box-shadow:0 0 12px #ff416c; transition:width .2s; }
+    #healthFill.low { background:#ff1744; animation:pulse .45s infinite alternate; }
+    @keyframes pulse { to { opacity:.48; } }
+    #ammo { margin-top:18px; display:flex; align-items:end; gap:6px; }
+    #ammo strong { color:var(--gold); font:800 29px Orbitron,sans-serif; }
+    #ammo span { color:#8192ac; font:12px Orbitron,sans-serif; margin-bottom:4px; }
+    #reloadHint { color:var(--gold); font:10px Orbitron,sans-serif; letter-spacing:1px; min-height:13px; margin-top:5px; }
+    #rightHud { position:absolute; right:24px; bottom:25px; padding:14px 18px; text-align:right; }
+    #score { color:var(--cyan); font:800 22px Orbitron,sans-serif; margin-top:5px; }
+    #controls { color:#8da3be; font-size:13px; line-height:1.8; margin-top:10px; }
+    kbd { color:white; background:#172239; border:1px solid #293955; padding:1px 5px; font:11px Orbitron,sans-serif; }
+
+    #crosshair { position:absolute; left:50%; top:50%; width:22px; height:22px; transform:translate(-50%,-50%); }
+    #crosshair:before,#crosshair:after { content:""; position:absolute; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+    #crosshair:before { width:2px; height:22px; left:10px; }
+    #crosshair:after { height:2px; width:22px; top:10px; }
+    #hitmarker { position:absolute; left:50%; top:50%; color:white; font:30px Orbitron,sans-serif; transform:translate(-50%,-50%) rotate(45deg); opacity:0; }
+    #hitmarker.show { animation:hit .2s ease-out; }
+    @keyframes hit { 0% { opacity:1; transform:translate(-50%,-50%) rotate(45deg) scale(.4); } 100% { opacity:0; transform:translate(-50%,-50%) rotate(45deg) scale(1.3); } }
+    #damageFlash { position:absolute; inset:0; opacity:0; background:radial-gradient(ellipse,transparent 35%,rgba(255,0,50,.55)); }
+    #damageFlash.show { animation:damage .35s ease-out; }
+    @keyframes damage { to { opacity:0; } }
+    #toast { position:absolute; top:23%; left:50%; transform:translateX(-50%); color:var(--gold); font:700 16px Orbitron,sans-serif; letter-spacing:3px; opacity:0; text-shadow:0 0 20px currentColor; }
+    #toast.show { animation:toast 1.3s ease-out; }
+    @keyframes toast { 0% { opacity:0; transform:translate(-50%,10px); } 15%,75% { opacity:1; transform:translate(-50%,0); } 100% { opacity:0; } }
+
+    #overlay { position:fixed; inset:0; z-index:10; display:grid; place-items:center; background:radial-gradient(ellipse,rgba(14,25,52,.76),rgba(3,5,14,.94)); }
+    #card { width:min(610px,calc(100vw - 36px)); padding:42px 48px; text-align:center; }
+    .eyebrow { color:var(--cyan); font:11px Orbitron,sans-serif; letter-spacing:5px; }
+    h1 { margin:10px 0 0; font:900 clamp(44px,9vw,82px)/.95 Orbitron,sans-serif; letter-spacing:-4px; }
+    h1 span { color:var(--cyan); text-shadow:0 0 28px rgba(77,252,255,.55); }
+    #subtitle { color:#9fb2cc; font-size:18px; margin:17px auto 26px; max-width:430px; }
+    #menuStats { display:flex; justify-content:center; gap:24px; margin:22px 0; color:#8298b4; font:10px Orbitron,sans-serif; }
+    #menuStats b { display:block; color:white; font-size:17px; margin-top:6px; }
+    button { border:0; cursor:pointer; padding:16px 28px; color:#041018; background:var(--cyan); font:800 13px Orbitron,sans-serif; letter-spacing:2px; box-shadow:0 0 28px #4dfcff55; }
+    button:hover { transform:translateY(-2px); }
+    #menuNote { color:#71839d; font-size:13px; margin-top:17px; }
+    .hidden { display:none !important; }
+
+    @media(max-width:650px) {
+      #topbar { top:10px; gap:12px; padding:9px 12px; font-size:8px; }
+      #topbar strong { font-size:12px; }
+      #leftHud { left:10px; bottom:10px; width:190px; padding:12px; }
+      #rightHud { right:10px; bottom:10px; padding:10px; }
+      #controls { display:none; }
+      #card { padding:30px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div id="topbar" class="panel">
+      <div>Sector <strong>07</strong></div>
+      <div class="wave">Wave <strong id="wave">1</strong></div>
+      <div class="kills">Kills <strong id="kills">0</strong></div>
+    </div>
+    <div id="leftHud" class="panel">
+      <div class="label">Suit integrity <span id="healthText">100%</span></div>
+      <div class="bar"><div id="healthFill"></div></div>
+      <div id="ammo"><strong id="ammoNow">12</strong><span>/ <span id="ammoTotal">60</span> ROUNDS</span></div>
+      <div id="reloadHint"></div>
+    </div>
+    <div id="rightHud" class="panel">
+      <div class="label">Combat score</div>
+      <div id="score">000000</div>
+      <div id="controls">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>SHIFT</kbd> sprint<br>
+        <kbd>SPACE</kbd> jump · <kbd>R</kbd> reload · <kbd>ESC</kbd> pause
+      </div>
+    </div>
+    <div id="crosshair"></div><div id="hitmarker">×</div>
+    <div id="damageFlash"></div><div id="toast"></div>
+  </div>
+
+  <div id="overlay">
+    <div id="card" class="panel">
+      <div class="eyebrow">NEON CITY // COMBAT SIMULATION</div>
+      <h1>NEON<br><span>BREACH</span></h1>
+      <div id="subtitle">The grid is overrun. Hold the arena, eliminate the drones, and survive every wave.</div>
+      <div id="menuStats">
+        <div>THREAT<b>RISING</b></div><div>WEAPON<b>PULSE-12</b></div><div>OBJECTIVE<b>SURVIVE</b></div>
+      </div>
+      <button id="startBtn">▶ &nbsp; START GAME</button>
+      <div id="menuNote">WASD move · Mouse aim · Click fire · Space jump · R reload · Esc pause</div>
+    </div>
+  </div>
+
+  <a-scene background="color:#070b19" renderer="colorManagement:true; antialias:true" fog="type:exponential; color:#080d1c; density:.025">
+    <a-assets>
+      <a-mixin id="wall" material="color:#101a32; metalness:.55; roughness:.48"></a-mixin>
+    </a-assets>
+
+    <a-plane rotation="-90 0 0" width="48" height="48" material="color:#10172b; metalness:.55; roughness:.7"></a-plane>
+    <a-plane rotation="-90 0 0" position="0 .012 0" width="48" height="48" material="color:#38bdd4; wireframe:true; opacity:.22; transparent:true"></a-plane>
+
+    <!-- Arena boundary walls -->
+    <a-box class="obstacle" mixin="wall" position="0 3 -24" width="48" height="6" depth="1"></a-box>
+    <a-box class="obstacle" mixin="wall" position="0 3 24" width="48" height="6" depth="1"></a-box>
+    <a-box class="obstacle" mixin="wall" position="-24 3 0" width="1" height="6" depth="48"></a-box>
+    <a-box class="obstacle" mixin="wall" position="24 3 0" width="1" height="6" depth="48"></a-box>
+
+    <!-- Solid cover blocks -->
+    <a-box class="obstacle" position="-8 1.25 -7" width="3" height="2.5" depth="3" color="#172846" metalness=".7"></a-box>
+    <a-box class="obstacle" position="8 1.25 -7" width="3" height="2.5" depth="3" color="#172846" metalness=".7"></a-box>
+    <a-box class="obstacle" position="-8 1.25 7" width="3" height="2.5" depth="3" color="#172846" metalness=".7"></a-box>
+    <a-box class="obstacle" position="8 1.25 7" width="3" height="2.5" depth="3" color="#172846" metalness=".7"></a-box>
+    <a-cylinder class="obstacle" position="0 1.4 -12" radius="1.6" height="2.8" color="#172846" metalness=".65"></a-cylinder>
+    <a-cylinder class="obstacle" position="0 1.4 12" radius="1.6" height="2.8" color="#172846" metalness=".65"></a-cylinder>
+
+    <!-- Neon rails and beacons -->
+    <a-box position="0 .2 -23.4" width="46" height=".12" depth=".12" color="#4dfcff"></a-box>
+    <a-box position="0 .2 23.4" width="46" height=".12" depth=".12" color="#ff3eaa"></a-box>
+    <a-box position="-23.4 .2 0" width=".12" height=".12" depth="46" color="#4dfcff"></a-box>
+    <a-box position="23.4 .2 0" width=".12" height=".12" depth="46" color="#ff3eaa"></a-box>
+    <a-cylinder class="obstacle" position="-20 2 0" radius=".45" height="4" color="#152440"></a-cylinder>
+    <a-cylinder position="-19.5 2 0" radius=".12" height="3.7" color="#4dfcff" emissive="#4dfcff"></a-cylinder>
+    <a-cylinder class="obstacle" position="20 2 0" radius=".45" height="4" color="#152440"></a-cylinder>
+    <a-cylinder position="19.5 2 0" radius=".12" height="3.7" color="#ff3eaa" emissive="#ff3eaa"></a-cylinder>
+
+    <a-light type="ambient" color="#a9b8ff" intensity=".48"></a-light>
+    <a-light type="point" position="0 8 0" color="#4dfcff" intensity="1.8" distance="38"></a-light>
+    <a-light type="point" position="-15 5 -15" color="#357bff" intensity="1.4" distance="25"></a-light>
+    <a-light type="point" position="15 5 15" color="#ff3eaa" intensity="1.5" distance="25"></a-light>
+    <a-light type="directional" position="-4 9 6" color="#d7e8ff" intensity=".65"></a-light>
+    <a-sky color="#050816"></a-sky>
+
+    <a-entity id="player" position="0 0 10">
+      <a-camera id="camera" position="0 1.65 0"
+        wasd-controls="acceleration:55"
+        look-controls="pointerLockEnabled:true">
+        <a-entity id="gun" position=".28 -.25 -.55">
+          <a-box position="0 0 0" width=".18" height=".16" depth=".52" color="#27354d" metalness=".8" roughness=".24"></a-box>
+          <a-box position="0 .015 -.29" width=".075" height=".075" depth=".28" color="#111a2b" metalness=".6"></a-box>
+          <a-box id="magazine" position="0 -.105 .035" width=".1" height=".14" depth=".12" color="#ff3eaa" metalness=".45"></a-box>
+          <a-sphere id="muzzle" position="0 0 -.47" radius=".055" color="#4dfcff" emissive="#4dfcff" visible="false"></a-sphere>
+        </a-entity>
+      </a-camera>
+    </a-entity>
+  </a-scene>
+
+  <script>
+    const $ = s => document.querySelector(s);
+    const scene = $("a-scene");
+    const player = $("#player");
+    const camera = $("#camera");
+    const gun = $("#gun");
+    const enemies = new Set();
+
+    let playing = false;
+    let health = 100, ammo = 12, reserve = 60, score = 0, kills = 0, wave = 1;
+    let reloadTimer = null, lastShot = 0, jumpVelocity = 0, jumpHeight = 0;
+    const PLAYER_RADIUS = 0.38;
+
+    function updateHud() {
+      $("#healthText").textContent = health + "%";
+      $("#healthFill").style.width = health + "%";
+      $("#healthFill").classList.toggle("low", health <= 30);
+      $("#ammoNow").textContent = ammo;
+      $("#ammoTotal").textContent = reserve;
+      $("#kills").textContent = kills;
+      $("#wave").textContent = wave;
+      $("#score").textContent = String(score).padStart(6, "0");
+    }
+
+    function toast(message) {
+      const el = $("#toast");
+      el.textContent = message;
+      el.classList.remove("show");
+      void el.offsetWidth;
+      el.classList.add("show");
+    }
+
+    function randomSpawn() {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 13 + Math.random() * 7;
+      return {
+        x: Math.max(-21, Math.min(21, Math.cos(angle) * radius)),
+        z: Math.max(-21, Math.min(21, Math.sin(angle) * radius))
+      };
+    }
+
+    function createEnemy() {
+      if (!playing) return;
+      const p = randomSpawn();
+      const root = document.createElement("a-entity");
+      root.classList.add("enemy");
+      root.setAttribute("position", `${p.x} 0 ${p.z}`);
+      root.dataset.hp = "2";
+
+      const core = document.createElement("a-dodecahedron");
+      core.classList.add("enemy-hit");
+      core.setAttribute("position", "0 1.05 0");
+      core.setAttribute("radius", ".58");
+      core.setAttribute("material", "color:#ff3eaa; metalness:.45; roughness:.22; emissive:#8a124e; emissiveIntensity:.45");
+      root.appendChild(core);
+
+      const eye = document.createElement("a-sphere");
+      eye.setAttribute("position", "0 1.08 -.5");
+      eye.setAttribute("radius", ".12");
+      eye.setAttribute("material", "color:#fff4f8; emissive:#ff3eaa");
+      root.appendChild(eye);
+
+      const ring = document.createElement("a-torus");
+      ring.setAttribute("position", "0 1.05 0");
+      ring.setAttribute("rotation", "90 0 0");
+      ring.setAttribute("radius", ".75");
+      ring.setAttribute("radius-tubular", ".035");
+      ring.setAttribute("material", "color:#4dfcff; emissive:#4dfcff");
+      root.appendChild(ring);
+
+      root.userData = { phase:Math.random()*6, attack:0, speed:1.5 + wave*.08 };
+      scene.appendChild(root);
+      enemies.add(root);
+    }
+
+    function spawnWave() {
+      if (!playing) return;
+      const count = Math.min(3 + wave * 2, 15);
+      for (let i = 0; i < count; i++) {
+        setTimeout(() => { if (playing) createEnemy(); }, i * 420);
+      }
+    }
+
+    function disposeEnemy(enemy) {
+      enemies.delete(enemy);
+      enemy.parentNode?.removeChild(enemy);
+    }
+
+    function damagePlayer(amount) {
+      if (!playing) return;
+      health = Math.max(0, health - amount);
+      updateHud();
+      const flash = $("#damageFlash");
+      flash.classList.remove("show");
+      void flash.offsetWidth;
+      flash.classList.add("show");
+      if (health <= 0) endGame();
+    }
+
+    function killEnemy(enemy) {
+      if (!enemies.has(enemy)) return;
+      disposeEnemy(enemy);
+      kills++;
+      score += 100 * wave;
+      updateHud();
+
+      const marker = $("#hitmarker");
+      marker.classList.remove("show");
+      void marker.offsetWidth;
+      marker.classList.add("show");
+
+      if (enemies.size === 0) {
+        wave++;
+        health = Math.min(100, health + 12);
+        reserve += 12;
+        ammo = Math.min(12, ammo + 4);
+        updateHud();
+        toast("WAVE " + wave + " // INCOMING");
+        spawnWave();
+      }
+    }
+
+    function fire() {
+      if (!playing || document.pointerLockElement !== document.body || reloadTimer) return;
+      const now = performance.now();
+      if (now - lastShot < 180) return;
+      lastShot = now;
+
+      if (ammo <= 0) {
+        toast("PRESS R TO RELOAD");
+        return;
+      }
+
+      ammo--;
+      updateHud();
+      gun.setAttribute("animation__kick",
+        "property:position; from:.28 -.25 -.55; to:.28 -.20 -.45; dur:60; dir:alternate; loop:2");
+
+      const muzzle = $("#muzzle");
+      muzzle.setAttribute("visible", "true");
+      setTimeout(() => muzzle.setAttribute("visible", "false"), 65);
+
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(new THREE.Vector2(0, 0), camera.object3DMap.camera);
+      const targets = [...enemies].flatMap(e => [...e.querySelectorAll(".enemy-hit")]);
+      const hit = ray.intersectObjects(targets.map(el => el.object3D), true).find(h => h.distance < 35);
+
+      if (hit) {
+        let enemy = hit.object.el;
+        while (enemy && !enemy.classList.contains("enemy")) enemy = enemy.parentEl;
+        if (enemy) {
+          const hp = Number(enemy.dataset.hp) - 1;
+          enemy.dataset.hp = hp;
+          if (hp <= 0) killEnemy(enemy);
+          else toast("HIT");
+        }
+      }
+    }
+
+    function reload() {
+      if (!playing || ammo === 12 || reserve <= 0 || reloadTimer) return;
+
+      $("#reloadHint").textContent = "RELOADING...";
+      gun.setAttribute("animation__reload",
+        "property:rotation; from:0 0 0; to:0 0 -28; dur:280; dir:alternate; loop:3");
+
+      const magazine = $("#magazine");
+      magazine.setAttribute("animation__magout",
+        "property:position; from:0 -.105 .035; to:0 -.32 .12; dur:420; dir:alternate; loop:2");
+
+      reloadTimer = setTimeout(() => {
+        const loaded = Math.min(12 - ammo, reserve);
+        ammo += loaded;
+        reserve -= loaded;
+        reloadTimer = null;
+        $("#reloadHint").textContent = "";
+        gun.removeAttribute("animation__reload");
+        magazine.removeAttribute("animation__magout");
+        gun.setAttribute("rotation", "0 0 0");
+        magazine.setAttribute("position", "0 -.105 .035");
+        updateHud();
+        toast("RELOADED");
+      }, 1250);
+    }
+
+    // Collision checks keep the player's horizontal movement outside solid obstacles.
+    function collidesAt(x, z) {
+      const obstacles = [...document.querySelectorAll(".obstacle")];
+      for (const el of obstacles) {
+        const box = new THREE.Box3().setFromObject(el.object3D);
+        box.min.x -= PLAYER_RADIUS;
+        box.max.x += PLAYER_RADIUS;
+        box.min.z -= PLAYER_RADIUS;
+        box.max.z += PLAYER_RADIUS;
+        if (x >= box.min.x && x <= box.max.x && z >= box.min.z && z <= box.max.z) return true;
+      }
+      return false;
+    }
+
+    let previousPlayer = { x: 0, z: 10 };
+
+    function keepPlayerOutOfObstacles() {
+      const p = player.object3D.position;
+      if (!collidesAt(p.x, p.z)) {
+        previousPlayer.x = p.x;
+        previousPlayer.z = p.z;
+        return;
+      }
+
+      const canX = !collidesAt(p.x, previousPlayer.z);
+      const canZ = !collidesAt(previousPlayer.x, p.z);
+
+      if (canX) {
+        p.z = previousPlayer.z;
+      } else if (canZ) {
+        p.x = previousPlayer.x;
+      } else {
+        p.x = previousPlayer.x;
+        p.z = previousPlayer.z;
+      }
+    }
+
+    function updateJump(delta) {
+      if (!playing) return;
+      const dt = Math.min(delta / 1000, .05);
+      jumpHeight += jumpVelocity * dt;
+      jumpVelocity -= 18 * dt;
+
+      if (jumpHeight <= 0) {
+        jumpHeight = 0;
+        jumpVelocity = 0;
+      }
+
+      camera.object3D.position.y = 1.65 + jumpHeight;
+    }
+
+    function updateEnemies(time, delta) {
+      if (!playing) return;
+      const p = player.object3D.position;
+      const dt = Math.min(delta / 1000, .05);
+
+      enemies.forEach(enemy => {
+        const ep = enemy.object3D.position;
+        const dx = p.x - ep.x, dz = p.z - ep.z;
+        const dist = Math.hypot(dx, dz);
+        const data = enemy.userData;
+
+        enemy.object3D.rotation.y = Math.atan2(dx, dz);
+        enemy.object3D.position.y = Math.sin(time / 250 + data.phase) * .12;
+
+        if (dist > 1.35) {
+          ep.x += dx / dist * data.speed * dt;
+          ep.z += dz / dist * data.speed * dt;
+        } else {
+          data.attack += dt;
+          if (data.attack > 1.05) {
+            data.attack = 0;
+            damagePlayer(8 + Math.min(wave, 5));
+          }
+        }
+      });
+    }
+
+    function startGame() {
+      if (!scene.hasLoaded) {
+        scene.addEventListener("loaded", startGame, { once:true });
+        return;
+      }
+
+      enemies.forEach(disposeEnemy);
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = null;
+      playing = true;
+      health = 100; ammo = 12; reserve = 60; score = 0; kills = 0; wave = 1;
+      jumpHeight = 0; jumpVelocity = 0;
+      player.setAttribute("position", "0 0 10");
+      player.object3D.rotation.set(0, 0, 0);
+      camera.object3D.position.y = 1.65;
+      previousPlayer = { x:0, z:10 };
+      $("#reloadHint").textContent = "";
+      $("#subtitle").textContent = "The grid is overrun. Hold the arena, eliminate the drones, and survive every wave.";
+      $("#startBtn").textContent = "▶  START GAME";
+      updateHud();
+      $("#overlay").classList.add("hidden");
+      $("#hud").style.display = "block";
+      spawnWave();
+      document.body.requestPointerLock?.();
+    }
+
+    function endGame() {
+      playing = false;
+      if (reloadTimer) clearTimeout(reloadTimer);
+      reloadTimer = null;
+      document.exitPointerLock?.();
+      $("#subtitle").textContent =
+        `You were overrun. Final score: ${String(score).padStart(6, "0")} · Wave ${wave} · ${kills} eliminations.`;
+      $("#startBtn").textContent = "↻  PLAY AGAIN";
+      $("#overlay").classList.remove("hidden");
+      $("#hud").style.display = "none";
+    }
+
+    $("#startBtn").addEventListener("click", startGame);
+
+    document.addEventListener("click", event => {
+      if (event.target !== $("#startBtn")) fire();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.code === "Space") {
+        event.preventDefault();
+        if (playing && jumpHeight === 0) jumpVelocity = 7;
+      }
+
+      if (event.key.toLowerCase() === "r") reload();
+
+      if (event.key === "Escape" && playing) {
+        playing = false;
+        $("#overlay").classList.remove("hidden");
+        $("#startBtn").textContent = "▶  RESUME";
+        $("#subtitle").textContent = "Simulation paused. Re-enter the arena when ready.";
+      }
+    });
+
+    document.addEventListener("pointerlockchange", () => {
+      if (!document.pointerLockElement && playing) {
+        playing = false;
+        $("#overlay").classList.remove("hidden");
+        $("#startBtn").textContent = "▶  RESUME";
+        $("#subtitle").textContent = "Simulation paused. Re-enter the arena when ready.";
+      }
+    });
+
+    scene.addEventListener("tick", event => {
+      keepPlayerOutOfObstacles();
+      updateJump(event.detail.delta);
+      updateEnemies(event.detail.elapsed, event.detail.delta);
+    });
+
+    scene.addEventListener("loaded", updateHud);
+  </script>
+</body>
+</html>
